@@ -93,6 +93,7 @@
       <button data-mode="random" class="mode">Təsadüfi</button>
       <button data-mode="daily" class="mode">Günün oyunu</button>
       <button data-mode="speed" class="mode">Sürət</button>
+      <button data-mode="quiz" class="mode">Tap</button>
     </nav>
     <div class="top-actions">
       <button id="installBtn" class="icon-btn" aria-label="Tətbiq kimi quraşdır" title="Quraşdır" hidden><svg><use href="#i-download"/></svg></button>
@@ -138,7 +139,11 @@
           </div>
           <span class="badge" id="shortBadge"></span>
         </div>
-        <div class="route">
+        <div class="quiz-head" id="quizHead" hidden>
+          <strong>Bu hansı rayondur?</strong>
+          <small>Xəritədə işarələnmiş rayonun adını yaz</small>
+        </div>
+        <div class="route" id="routeBox">
           <div class="stop">
             <span class="stop-dot start"></span>
             <div><small>Haradan</small><strong id="startName"></strong></div>
@@ -150,7 +155,7 @@
           </div>
         </div>
         <div class="tries">
-          <div class="tries-head"><span>Cəhdlər</span><span id="triesText"></span></div>
+          <div class="tries-head"><span id="triesLabel">Cəhdlər</span><span id="triesText"></span></div>
           <div class="pips" id="pips"></div>
         </div>
         <div class="timer" id="timer" hidden>
@@ -194,11 +199,12 @@
 
       <section class="guesses-wrap">
         <div class="section-head">
-          <span>Təxminlər</span>
+          <span id="guessHead">Təxminlər</span>
           <span class="muted" id="guessCount"></span>
         </div>
         <ol id="guessList" class="guesses"></ol>
         <p id="emptyHint" class="empty">Hələ təxmin yoxdur. <b id="hintStart"></b> ilə <b id="hintEnd"></b> arasındakı rayonları yaz.</p>
+        <p id="quizEmpty" class="empty" hidden>İşarələnmiş rayonun adını yaz. Bilmirsənsə, “Bilmirəm” düyməsini bas.</p>
       </section>
 
       <div class="panel-foot" id="panelFoot">

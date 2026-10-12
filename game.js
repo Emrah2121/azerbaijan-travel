@@ -139,6 +139,7 @@
       random: { played: 0, won: 0, streak: 0, best: 0 },
       daily: { played: 0, won: 0, streak: 0, best: 0, lastDay: null, lastWin: null },
       speed: { played: 0, best: 0, routes: 0 },
+      quiz: { played: 0, best: 0, correct: 0, total: 0 },
     },
     dist: {}, // winning guess count → games
     wins: 0, perfect: 0, hintless: 0, hardWins: 0, nakhWin: false,
@@ -174,6 +175,8 @@
     { id: "hintless10", icon: "🧠", name: "Yaddaş ustası", desc: "İpucusuz 10 qələbə", test: (p) => p.hintless >= 10 },
     { id: "hard", icon: "⛰️", name: "Dağ keçidi", desc: "Çətin səviyyədə qalib gəl", test: (p) => p.hardWins >= 1 },
     { id: "speed8", icon: "🏎️", name: "Sürət ustası", desc: "Sürət rejimində 8+ xal", test: (p) => p.modes.speed.best >= 8 },
+    { id: "geo10", icon: "🎓", name: "Coğrafiyaçı", desc: "Tap rejimində 10 / 10", test: (p) => p.modes.quiz.best >= 10 },
+    { id: "quiz100", icon: "📚", name: "Xəritə bilicisi", desc: "Tap rejimində cəmi 100 düz cavab", test: (p) => p.modes.quiz.correct >= 100 },
   ];
 
   // ---------- sound + haptics ----------
@@ -197,7 +200,10 @@
   //        hintTarget, hintStep, done, won, gaveUp, day}
   let game = null;
   const speed = { running: false, endsAt: 0, score: 0, routes: 0, timer: 0, newRecord: false };
-  let lastOutcome = "route"; // which result the outcome modal is showing: "route" | "speed"
+  let lastOutcome = "route"; // which result the outcome modal is showing: "route" | "speed" | "quiz"
+  // "Bu hansı rayondur?": ten districts to name; session invalidates timers from an abandoned run
+  const QUIZ_LEN = 10;
+  const quiz = { ids: [], answers: [], waiting: false, newRecord: false, session: 0 };
 
   function newGame(mode, start, end, day) {
     game = {
@@ -225,6 +231,7 @@
 
   function submitGuess(id) {
     if (game.done) return;
+    if (game.mode === "quiz") return answerQuiz(id);
     if (id === undefined) return reject("Belə rayon tapılmadı.");
     if (id === game.start || id === game.end) return reject(`${R[id].name} artıq marşrutdadır.`);
     if (game.guesses.includes(id)) return reject(`${R[id].name} artıq təxmin edilib.`);
@@ -260,7 +267,13 @@
     else if (r === "red") play("error");
     save();
     render(false, id);
-    if (game.done) setTimeout(showOutcome, 650); // let the map paint the last guess first
+    // let the map paint the last guess first; a win walks the route before the card opens
+    if (game.done && game.won) {
+      const path = cheapestPath(game.start, game.end, new Set(game.guesses));
+      const g = game;
+      // skip the card if the player already moved on to another game mid-walk
+      setTimeout(() => game === g && animateRoute(path).then(() => game === g && showOutcome()), 700);
+    } else if (game.done) setTimeout(showOutcome, 650);
   }
 
   function finish(won, gaveUp = false) {
@@ -376,7 +389,7 @@
       paths[i] = p;
       landLayer.appendChild(p);
     }
-    svg.append(buildDefs(), landLayer, onLayer, pinLayer, labelLayer);
+    svg.append(buildDefs(), landLayer, onLayer, pinLayer, routeLayer, labelLayer, walkerLayer);
   }
 
   const FULL = [0, 0, MAP.width, MAP.width / ASPECT];
@@ -462,19 +475,10 @@
     }
   }
 
-  function drawMap(fresh) {
-    const have = new Set(game.guesses);
-    const reveal = new Set();
-    if (game.done && !game.won) {
-      for (const v of cheapestPath(game.start, game.end, have)) if (!have.has(v)) reveal.add(v);
-    }
-    // a second-level hint outlines the district without naming it
-    const hintId = game.hintStep === 2 && !game.done && !have.has(game.hintTarget) ? game.hintTarget : null;
-    shownIds = [game.start, game.end, ...game.guesses, ...reveal];
-    if (hintId !== null) shownIds.push(hintId);
-    const state = (i) =>
-      i === game.start ? "start" : i === game.end ? "end" : have.has(i) ? displayRate(i)
-        : reveal.has(i) ? "reveal" : i === hintId ? "hint" : "";
+  // Colors the given regions, lifts them above the rest, and rebuilds pins and labels.
+  // `state(i)` gives each region's class; `labelIds` are the ones whose names are shown.
+  function paintRegions(ids, state, labelIds, fresh) {
+    shownIds = ids;
     paths.forEach((p, i) => {
       const s = state(i);
       p.setAttribute("class", "r" + (s ? " on " + s : "") + (i === fresh ? " fresh" : ""));
@@ -483,7 +487,7 @@
     for (const i of ORDER) (paths[i].classList.contains("on") ? onLayer : landLayer).appendChild(paths[i]);
 
     // every shown region gets a pin; sizeLabels only displays the ones too small at this zoom
-    pinLayer.replaceChildren(...shownIds.map((i) => {
+    pinLayer.replaceChildren(...ids.map((i) => {
       // a pulsing halo behind a solid dot, both in the region's state color
       const g = document.createElementNS(SVGNS, "g");
       g.setAttribute("class", `pin-wrap ${state(i)}${i === fresh ? " fresh" : ""}`);
@@ -499,7 +503,7 @@
       }
       return g;
     }));
-    labelLayer.replaceChildren(...shownIds.filter((i) => i !== hintId).map((i) => {
+    labelLayer.replaceChildren(...labelIds.map((i) => {
       const t = document.createElementNS(SVGNS, "text");
       t.dataset.x = R[i].label[0];
       t.dataset.y = R[i].label[1];
@@ -507,20 +511,232 @@
       t.textContent = R[i].name;
       return t;
     }));
-    zoomTo(fitBox(shownIds));
+  }
+
+  function drawMap(fresh) {
+    if (game.mode === "quiz") return drawQuizMap(fresh);
+    stopWalk();
+    const have = new Set(game.guesses);
+    const reveal = new Set();
+    if (game.done && !game.won) {
+      for (const v of cheapestPath(game.start, game.end, have)) if (!have.has(v)) reveal.add(v);
+    }
+    // a second-level hint outlines the district without naming it
+    const hintId = game.hintStep === 2 && !game.done && !have.has(game.hintTarget) ? game.hintTarget : null;
+    const ids = [game.start, game.end, ...game.guesses, ...reveal];
+    if (hintId !== null) ids.push(hintId);
+    const state = (i) =>
+      i === game.start ? "start" : i === game.end ? "end" : have.has(i) ? displayRate(i)
+        : reveal.has(i) ? "reveal" : i === hintId ? "hint" : "";
+    paintRegions(ids, state, ids.filter((i) => i !== hintId), fresh);
+    zoomTo(fitBox(ids));
+  }
+
+  // quiz: the asked district (plus earlier answers) on a bordered map, zoomed out enough for context
+  function drawQuizMap(fresh) {
+    stopWalk();
+    const cur = game.start;
+    const asked = quiz.ids.slice(0, quiz.answers.length);
+    const result = new Map(asked.map((id, k) => [id, quiz.answers[k] ? "green" : "red"]));
+    const ids = [...asked];
+    if (!result.has(cur)) ids.push(cur);
+    const state = (i) => result.get(i) || (i === cur ? "quiz" : "");
+    paintRegions(ids, state, asked, fresh);
+    const box = fitBox([cur]);
+    const w = Math.max(box[2], 380), h = w / ASPECT; // never closer than ~half the country
+    zoomTo([box[0] + box[2] / 2 - w / 2, box[1] + box[3] / 2 - h / 2, w, h]);
+  }
+
+  // ---------- route walk (win animation) ----------
+  const routeLayer = document.createElementNS(SVGNS, "g");
+  routeLayer.setAttribute("class", "route-layer");
+  const walkerLayer = document.createElementNS(SVGNS, "g"); // above the labels so the hiker stays visible
+  walkerLayer.setAttribute("class", "route-layer");
+  let walk = null; // { raf, finish } while the hiker is walking
+
+  // smooth curve through the district centres (Catmull-Rom → cubic Bézier)
+  function smoothPath(pts) {
+    let d = `M${pts[0][0]} ${pts[0][1]}`;
+    for (let i = 0; i < pts.length - 1; i++) {
+      const p0 = pts[i - 1] || pts[i], p1 = pts[i], p2 = pts[i + 1], p3 = pts[i + 2] || p2;
+      const c1 = [p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6];
+      const c2 = [p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6];
+      d += `C${c1[0].toFixed(1)} ${c1[1].toFixed(1)} ${c2[0].toFixed(1)} ${c2[1].toFixed(1)} ${p2[0]} ${p2[1]}`;
+    }
+    return d;
+  }
+
+  function stopWalk() {
+    if (walk) walk.finish(true);
+    routeLayer.replaceChildren();
+    walkerLayer.replaceChildren();
+  }
+
+  // The header's hiker walks from start to end along the route; resolves when done or skipped.
+  function animateRoute(path) {
+    return new Promise((resolve) => {
+      if (reduceMotion() || path.length < 2) return resolve();
+      const pts = path.map((i) => R[i].label);
+      const d = smoothPath(pts);
+      const mk = (cls) => {
+        const p = document.createElementNS(SVGNS, "path");
+        p.setAttribute("d", d);
+        p.setAttribute("class", cls);
+        return p;
+      };
+      // start→end color ramp in map units (a bounding-box gradient vanishes on straight lines)
+      const grad = document.createElementNS(SVGNS, "linearGradient");
+      grad.id = "g-route";
+      const [a, b] = [pts[0], pts[pts.length - 1]];
+      for (const [k, v] of Object.entries({ gradientUnits: "userSpaceOnUse", x1: a[0], y1: a[1], x2: b[0], y2: b[1] })) grad.setAttribute(k, v);
+      grad.innerHTML = '<stop offset="0" style="stop-color:var(--start)"/><stop offset="0.5" style="stop-color:var(--green)"/><stop offset="1" style="stop-color:var(--end)"/>';
+      routeLayer.replaceChildren(grad);
+      const casing = mk("route-casing"), line = mk("route-line");
+      const total = line.getTotalLength ? (routeLayer.append(casing, line), line.getTotalLength()) : 0;
+      if (!total) return resolve();
+
+      // the hiker: a clone of the header logo on a white disc, feet on the route, ~46 screen px tall
+      const view = fitBox(path); // the walk is framed on the whole route
+      const upp = view[2] / (svg.clientWidth || 720);
+      const size = 46 * upp;
+      const walker = document.createElementNS(SVGNS, "g");
+      walker.setAttribute("class", "walker");
+      const flip = document.createElementNS(SVGNS, "g");
+      const fig = document.querySelector(".hiker").cloneNode(true);
+      fig.removeAttribute("class");
+      fig.setAttribute("class", "walker-fig");
+      for (const [k, v] of Object.entries({ x: -size / 2, y: -size * 0.92, width: size, height: size })) fig.setAttribute(k, v);
+      const disc = document.createElementNS(SVGNS, "circle");
+      disc.setAttribute("class", "walker-disc");
+      for (const [k, v] of Object.entries({ cx: 0, cy: -size * 0.42, r: size * 0.56 })) disc.setAttribute(k, v);
+      flip.appendChild(fig);
+      walker.append(disc, flip);
+      walkerLayer.replaceChildren(walker);
+
+      // where along the line each district sits, to pop it as the hiker arrives
+      const chord = [0];
+      for (let i = 1; i < pts.length; i++) chord.push(chord[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
+      const marks = chord.map((c) => c / chord[chord.length - 1]);
+      let reached = 0;
+      const pop = (k) => {
+        const p = paths[path[k]];
+        p.classList.remove("fresh");
+        void p.getBBox(); // restart the animation
+        p.classList.add("fresh");
+      };
+
+      // widths in map units (not non-scaling) so the dash offset and the hiker share one length scale
+      casing.style.strokeWidth = 9 * upp;
+      line.style.strokeWidth = 4.5 * upp;
+      for (const p of [casing, line]) { p.style.strokeDasharray = total; p.style.strokeDashoffset = total; }
+      const dur = Math.min(3500, 450 * (path.length - 1) + 300);
+      const t0 = performance.now();
+      let lastX = pts[0][0];
+
+      const place = (t) => {
+        const e = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2; // ease in-out
+        const pt = line.getPointAtLength(total * e);
+        for (const p of [casing, line]) p.style.strokeDashoffset = total * (1 - e);
+        walker.setAttribute("transform", `translate(${pt.x.toFixed(2)} ${pt.y.toFixed(2)})`);
+        if (Math.abs(pt.x - lastX) > 0.05) flip.setAttribute("transform", pt.x < lastX ? "scale(-1 1)" : "");
+        lastX = pt.x;
+        while (reached < marks.length && marks[reached] <= e + 1e-6) pop(reached++);
+      };
+      const finish = (skipped) => {
+        if (!walk) return;
+        cancelAnimationFrame(walk.raf);
+        svg.removeEventListener("pointerdown", onSkip);
+        document.removeEventListener("keydown", onKey);
+        walk = null;
+        place(1);
+        routeLayer.classList.add("settled");
+        walkerLayer.classList.add("settled");
+        setTimeout(() => walker.classList.add("gone"), skipped ? 0 : 350);
+        setTimeout(resolve, skipped ? 0 : 450);
+      };
+      const onSkip = () => finish(true);
+      const onKey = (e) => { if (e.key === "Escape" || e.key === "Enter") finish(true); };
+      routeLayer.classList.remove("settled");
+      walkerLayer.classList.remove("settled");
+      svg.addEventListener("pointerdown", onSkip, { once: true });
+      document.addEventListener("keydown", onKey);
+      const step = () => {
+        const t = Math.min(1, (performance.now() - t0) / dur);
+        place(t);
+        if (t < 1) walk.raf = requestAnimationFrame(step);
+        else finish(false);
+      };
+      walk = { raf: 0, finish };
+      zoomTo(view, 400);
+      place(0);
+      walk.raf = requestAnimationFrame(step);
+    });
   }
 
   // ---------- UI ----------
   const reduceMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const LABELS = { green: "ən qısa yolda", orange: "yaxındır", red: "uzaqdır" };
-  const MODE_LABELS = { random: "Təsadüfi oyun", daily: "Günün oyunu", speed: "Sürət rejimi" };
+  const MODE_LABELS = { random: "Təsadüfi oyun", daily: "Günün oyunu", speed: "Sürət rejimi", quiz: "Tap" };
 
   function missingOnPath() {
     return cheapestPath(game.start, game.end, new Set(game.guesses))
       .filter((v) => v !== game.start && v !== game.end && !game.guesses.includes(v));
   }
 
+  // switches the route card between the route view and the quiz view
+  function setQuizChrome(on) {
+    document.body.classList.toggle("quiz-mode", on); // hides the route color legend
+    $("quizHead").hidden = !on;
+    $("routeBox").hidden = on;
+    $("levelBtn").parentElement.hidden = on;
+    $("triesLabel").textContent = on ? "Cavablar" : "Cəhdlər";
+    $("guessHead").textContent = on ? "Cavabların" : "Təxminlər";
+    $("quizEmpty").hidden = true;
+  }
+
+  function renderQuiz(reset, fresh) {
+    setQuizChrome(true);
+    const n = quiz.answers.length, score = quiz.answers.filter(Boolean).length;
+    const over = n === QUIZ_LEN;
+    $("modeLabel").textContent = `Tap · Sual ${Math.min(n + (game.done ? 0 : 1), QUIZ_LEN)} / ${QUIZ_LEN}`;
+    $("shortBadge").textContent = `Xal: ${score}`;
+    $("triesText").textContent = `${n} / ${QUIZ_LEN}`;
+    $("pips").replaceChildren(...Array.from({ length: QUIZ_LEN }, (_, k) => {
+      const i = document.createElement("i");
+      i.className = "pip" + (k < n ? (quiz.answers[k] ? " green" : " red") : k === n ? " now" : "");
+      return i;
+    }));
+    $("guessList").replaceChildren(...quiz.ids.slice(0, n).map((id, k) => {
+      const li = document.createElement("li");
+      const ok = quiz.answers[k];
+      li.className = (ok ? "green" : "red") + (id === fresh ? " new" : "");
+      li.innerHTML = `<span class="n">${k + 1}</span><span class="name"></span><span class="tag">${ok ? "tapdın" : "səhv"}</span>`;
+      li.querySelector(".name").textContent = R[id].name;
+      return li;
+    }).reverse());
+    $("emptyHint").hidden = true;
+    $("quizEmpty").hidden = n > 0;
+    $("guessCount").textContent = n ? `${score} düz` : "";
+
+    const input = $("guessInput");
+    input.disabled = game.done;
+    document.querySelector(".command-go").disabled = game.done;
+    $("panelFoot").hidden = over;
+    resetGiveUp();
+    $("giveUpBtn").disabled = game.done;
+    $("hintBtn").hidden = true;
+    $("timer").hidden = true;
+    $("speedStart").hidden = true;
+    $("doneBar").hidden = true;
+    $("stats").hidden = true;
+    drawMap(fresh);
+    if (reset) input.value = "";
+  }
+
   function render(reset, fresh) {
+    if (game.mode === "quiz") return renderQuiz(reset, fresh);
+    setQuizChrome(false);
+    $("giveUpBtn").disabled = false;
     const used = usedCount();
     const isSpeed = game.mode === "speed";
     const idle = isSpeed && !speed.running; // speed mode waiting for "Başla"
@@ -595,6 +811,10 @@
   }
 
   function shareText() {
+    if (lastOutcome === "quiz") {
+      const score = quiz.answers.filter(Boolean).length;
+      return `Səyyah 🗺️ Bu hansı rayondur? ${score}/${QUIZ_LEN}\n` + quiz.answers.map((a) => (a ? "🟩" : "🟥")).join("");
+    }
     if (lastOutcome === "speed") return `Səyyah ⚡ Sürət rejimi (${LEVELS[level].label})\n${speed.score} xal · ${speed.routes} marşrut`;
     const sq = { green: "🟩", orange: "🟧", red: "🟥" };
     const head = game.mode === "daily" ? `Səyyah #${dayNumber(game.day)}` : `Səyyah · ${LEVELS[game.level].label}`;
@@ -654,7 +874,11 @@
     const btn = $("outImage");
     btn.disabled = true;
     try {
-      const data = lastOutcome === "speed"
+      const data = lastOutcome === "quiz"
+        ? { kind: "quiz", title: "Bu hansı rayondur?", score: `${quiz.answers.filter(Boolean).length} / ${QUIZ_LEN}`,
+            sub: `Rekord: ${profile.modes.quiz.best} / ${QUIZ_LEN}`, emoji: shareText().split("\n").pop(),
+            shown: quiz.ids.slice(0, quiz.answers.length).map((id, k) => ({ id, state: quiz.answers[k] ? "green" : "red" })) }
+        : lastOutcome === "speed"
         ? { kind: "speed", title: speed.newRecord ? "Yeni rekord!" : "Sürət rejimi", score: `${speed.score} xal`,
             sub: `${speed.routes} marşrut · ${LEVELS[level].label}`, shown: [] }
         : {
@@ -832,6 +1056,8 @@
       row("Təsadüfi", [[m.random.played, "oyun"], [pct(m.random) + "%", "qələbə"], [m.random.streak, "seriya"], [m.random.best, "rekord"]]) +
       row("Günün oyunu", [[m.daily.played, "oyun"], [pct(m.daily) + "%", "qələbə"], [m.daily.streak, "seriya"], [m.daily.best, "rekord"]]) +
       row("Sürət", [[m.speed.played, "oyun"], [m.speed.best, "rekord xal"], [m.speed.routes, "marşrut"], [p.perfect, "mükəmməl"]]) +
+      row("Tap", [[m.quiz.played, "oyun"], [`${m.quiz.best}/${QUIZ_LEN}`, "rekord"],
+        [(m.quiz.total ? Math.round((m.quiz.correct / m.quiz.total) * 100) : 0) + "%", "dəqiqlik"], [m.quiz.correct, "düz cavab"]]) +
       `<div class="stat-group"><h3>Qələbə üçün cəhd sayı</h3>${
         dist.length
           ? `<div class="dist">${dist.map(([k, v]) =>
@@ -867,12 +1093,14 @@
     clearTimeout(giveUpTimer);
     const b = $("giveUpBtn");
     b.classList.remove("confirm");
-    b.querySelector("span").textContent = game && game.mode === "speed" ? "Keç" : "Təslim ol";
-    b.querySelector("use").setAttribute("href", game && game.mode === "speed" ? "#i-skip" : "#i-flag");
+    const mode = game && game.mode;
+    b.querySelector("span").textContent = mode === "speed" ? "Keç" : mode === "quiz" ? "Bilmirəm" : "Təslim ol";
+    b.querySelector("use").setAttribute("href", mode === "speed" ? "#i-skip" : mode === "quiz" ? "#i-help" : "#i-flag");
   }
   function giveUp() {
     if (game.done) return;
     if (game.mode === "speed") return nextSpeedRoute(); // skipping costs nothing but the time spent
+    if (game.mode === "quiz") return settleQuiz(false, null); // "Bilmirəm" counts as a miss
     const b = $("giveUpBtn");
     if (!b.classList.contains("confirm")) {
       b.classList.add("confirm");
@@ -909,7 +1137,7 @@
   // upwards when there is more visible room above, and cap its height to the room it gets.
   function placeAc() {
     const list = $("acList");
-    if (list.hidden) return;
+    if (!list || list.hidden) return;
     const vv = window.visualViewport;
     const viewTop = vv ? vv.offsetTop : 0;
     const viewBottom = vv ? vv.offsetTop + vv.height : innerHeight;
@@ -1017,9 +1245,103 @@
     setTimeout(showSpeedOutcome, 300);
   }
 
+  // quiz "Bu hansı rayondur?": name the highlighted district, ten in a row
+  function startQuiz() {
+    stopSpeed();
+    const pool = R.map((_, i) => i);
+    for (let i = pool.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [pool[i], pool[j]] = [pool[j], pool[i]];
+    }
+    Object.assign(quiz, { ids: pool.slice(0, QUIZ_LEN), answers: [], waiting: false, newRecord: false });
+    quiz.session++;
+    showQuestion();
+  }
+  function showQuestion() {
+    const cur = quiz.ids[quiz.answers.length];
+    // a one-district "game" so the shared helpers (start/end, level) keep working
+    game = {
+      mode: "quiz", level: "normal", start: cur, end: cur, guesses: [], trail: [], hints: 0,
+      hintTarget: null, hintStep: 0, done: false, won: false, gaveUp: false, day: null,
+    };
+    setBorders(true); // borders give the shape context
+    document.body.classList.remove("no-orange");
+    render(true);
+    $("guessInput").focus({ preventScroll: true });
+  }
+  function answerQuiz(id) {
+    if (quiz.waiting) return;
+    if (id === undefined) return reject("Belə rayon tapılmadı.");
+    settleQuiz(id === game.start, id);
+  }
+  // `guessed` is null for "Bilmirəm"
+  function settleQuiz(ok, guessed) {
+    if (quiz.waiting || game.done) return;
+    quiz.waiting = true;
+    const cur = game.start, session = quiz.session;
+    quiz.answers.push(ok);
+    game.done = true; game.won = ok;
+    if (ok) {
+      play("correct");
+      toast(`Düzdür: ${R[cur].name}`);
+    } else {
+      play("error");
+      toast(guessed === null ? `Bu ${R[cur].name} idi` : `Yox, bu ${R[cur].name} idi`, true);
+    }
+    render(false, cur);
+    const last = quiz.answers.length === QUIZ_LEN;
+    setTimeout(() => {
+      if (session !== quiz.session || game.mode !== "quiz") return; // the player left the quiz
+      quiz.waiting = false;
+      if (last) endQuiz();
+      else showQuestion();
+    }, ok ? 900 : 1600);
+  }
+  function endQuiz() {
+    const score = quiz.answers.filter(Boolean).length;
+    const q = profile.modes.quiz;
+    q.played++; q.correct += score; q.total += QUIZ_LEN;
+    quiz.newRecord = score > q.best;
+    q.best = Math.max(q.best, score);
+    // correctly named districts count as explored
+    const seen = new Set(profile.visited);
+    quiz.ids.forEach((id, k) => quiz.answers[k] && seen.add(id));
+    profile.visited = [...seen];
+    saveProfile();
+    checkBadges();
+    render(false);
+    play(score >= 7 ? "victory" : "defeat");
+    setTimeout(showQuizOutcome, 300);
+  }
+  function showQuizOutcome() {
+    lastOutcome = "quiz";
+    const score = quiz.answers.filter(Boolean).length;
+    const missed = quiz.ids.filter((_, k) => !quiz.answers[k]);
+    $("outcome").className = "modal " + (score >= 7 ? "win" : "lose");
+    $("outKicker").textContent = `Bu hansı rayondur? · ${QUIZ_LEN} sual`;
+    $("outTitle").textContent = score === QUIZ_LEN ? "Hamısı düz!" : quiz.newRecord ? "Yeni rekord!"
+      : score >= 7 ? "Əla nəticə!" : "Bir az da məşq!";
+    $("outSub").textContent = missed.length
+      ? `${QUIZ_LEN} sualdan ${score}-ni tapdın. Səhv etdiklərin:`
+      : "Bütün rayonları düzgün tanıdın.";
+    fillOutStats([[score, `düz / ${QUIZ_LEN}`], [Math.round((score / QUIZ_LEN) * 100), "dəqiqlik", "%"], [profile.modes.quiz.best, "rekord"]]);
+    $("outRoute").hidden = !missed.length;
+    $("outRoute").replaceChildren(...missed.map((id, k) => {
+      const li = document.createElement("li");
+      li.style.animationDelay = 0.6 + k * 0.09 + "s";
+      li.appendChild(Object.assign(document.createElement("span"), { className: "chip missing", textContent: R[id].name }));
+      return li;
+    }));
+    $("outAgainText").textContent = "Yenidən oyna";
+    openModal("outcome");
+    $("outAgain").focus({ preventScroll: true });
+    if ((score === QUIZ_LEN || (quiz.newRecord && score >= 7)) && !reduceMotion()) confetti();
+  }
+
   function moveThumb() {
     const active = document.querySelector(".mode.active");
     const thumb = document.querySelector(".seg-thumb");
+    if (!active || !thumb) return;
     thumb.style.width = active.offsetWidth + "px";
     thumb.style.transform = `translateX(${active.offsetLeft}px)`;
   }
@@ -1027,8 +1349,10 @@
     document.querySelectorAll(".mode").forEach((b) => b.classList.toggle("active", b.dataset.mode === mode));
     moveThumb();
     if (mode !== "speed") stopSpeed();
+    quiz.session++; // drop any pending "next question" timer
     if (mode === "daily") startDaily();
     else if (mode === "speed") enterSpeed();
+    else if (mode === "quiz") startQuiz();
     else startRandom();
   }
 
@@ -1116,7 +1440,7 @@
   const playAgain = () => setMode("random");
   $("againBtn").addEventListener("click", playAgain);
   $("reopenBtn").addEventListener("click", showOutcome);
-  $("outAgain").addEventListener("click", () => closeModal("outcome", lastOutcome === "speed" ? startSpeed : playAgain));
+  $("outAgain").addEventListener("click", () => closeModal("outcome", lastOutcome === "speed" ? startSpeed : lastOutcome === "quiz" ? startQuiz : playAgain));
   $("outShare").addEventListener("click", copyResult);
   $("outImage").addEventListener("click", shareImage);
   document.querySelectorAll("#outcome [data-close]").forEach((el) => el.addEventListener("click", () => closeModal("outcome")));

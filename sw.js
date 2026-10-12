@@ -1,6 +1,6 @@
 // Service worker: lets Səyyah install as an app and work offline.
 // Network-first for the app's own files so edits show up immediately; the cache is the offline fallback.
-const CACHE = "seyyah-v2";
+const CACHE = "seyyah-v3";
 const FONTS = "seyyah-fonts-v1";
 const ASSETS = [
   "./", "index.html", "style.css", "game.js", "share.js", "data.js",
