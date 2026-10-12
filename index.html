@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="az">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Səyyah — Azərbaycan</title>
+  <meta name="description" content="Bir rayondan digərinə qonşu rayonlar üzərindən yol tap.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="icon" href="favicon.ico" sizes="48x48">
+  <link rel="icon" href="icons/favicon-32.png" type="image/png" sizes="32x32">
+  <link rel="icon" href="icons/favicon-16.png" type="image/png" sizes="16x16">
+  <link rel="icon" href="logo.svg" type="image/svg+xml">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <meta name="theme-color" content="#f3f3ef">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <link rel="stylesheet" href="style.css">
+  <script>
+    // set the theme before first paint
+    try {
+      document.documentElement.dataset.theme = JSON.parse(localStorage.getItem("seyyah-theme")) ||
+        (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+    } catch { document.documentElement.dataset.theme = "light"; }
+  </script>
+</head>
+<body>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+    <symbol id="i-fit" viewBox="0 0 24 24"><path d="M4 9V5a1 1 0 0 1 1-1h4M15 4h4a1 1 0 0 1 1 1v4M20 15v4a1 1 0 0 1-1 1h-4M9 20H5a1 1 0 0 1-1-1v-4"/></symbol>
+    <symbol id="i-grid" viewBox="0 0 24 24"><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/><rect x="3" y="3" width="18" height="18" rx="3"/></symbol>
+    <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.6M12 17.2v.1"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+    <symbol id="i-shuffle" viewBox="0 0 24 24"><path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></symbol>
+    <symbol id="i-flag" viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+    <symbol id="i-trophy" viewBox="0 0 24 24"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4zM7 6H4v1a3 3 0 0 0 3 3M17 6h3v1a3 3 0 0 1-3 3"/></symbol>
+    <symbol id="i-sound" viewBox="0 0 24 24"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4.2 4.2 0 0 1 0 6M18.3 6.5a8 8 0 0 1 0 11"/></symbol>
+    <symbol id="i-mute" viewBox="0 0 24 24"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M16 9.5l5 5M21 9.5l-5 5"/></symbol>
+    <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></symbol>
+    <symbol id="i-bulb" viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.6 10.8c.6.5 1 1.2 1 2V16h5.2v-.2c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z"/></symbol>
+    <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 2L4.5 13.5H12L11 22l8.5-11.5H12z"/></symbol>
+    <symbol id="i-skip" viewBox="0 0 24 24"><path d="M5 5l9 7-9 7zM18 5v14"/></symbol>
+    <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-9 9"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></symbol>
+    <symbol id="i-chevron" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5"/></symbol>
+  </svg>
+
+  <header class="topbar">
+    <a class="brand" href="#" aria-label="Səyyah — Azərbaycanı kəşf et">
+      <!-- hiker mark in the flat, outlined style of logo.jpg; outline follows the theme ink -->
+      <svg class="hiker" viewBox="0 0 64 64" aria-hidden="true">
+        <g class="hiker-body" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M8 60h48" fill="none" stroke-width="2.6"/>
+          <path class="hiker-lines" d="M6 44h6M4 49h7" fill="none" stroke-width="2.4"/>
+          <!-- back leg -->
+          <path class="leg-back" d="M25 40l-3.5 8.5L15 57" fill="none" stroke-width="7.6"/>
+          <path class="leg-back" d="M25 40l-3.5 8.5L15 57" fill="none" stroke-width="4.6" style="stroke: var(--logo-jeans)"/>
+          <!-- backpack + bottle -->
+          <rect x="12.5" y="21.5" width="11" height="17" rx="3.2" stroke-width="2.4" style="fill: var(--logo-pack)"/>
+          <rect x="9" y="30.5" width="4.6" height="8.5" rx="1.6" stroke-width="2.2" style="fill: var(--logo-bottle)"/>
+          <!-- front leg -->
+          <path class="leg-front" d="M30.5 40l4 8.5L37 57" fill="none" stroke-width="7.6"/>
+          <path class="leg-front" d="M30.5 40l4 8.5L37 57" fill="none" stroke-width="4.6" style="stroke: var(--logo-jeans)"/>
+          <!-- torso -->
+          <rect x="20" y="20.5" width="14.5" height="21" rx="4.5" stroke-width="2.4" style="fill: var(--logo-shirt)"/>
+          <!-- walking stick -->
+          <path d="M47 23v37" fill="none" stroke-width="6.4"/>
+          <path d="M47 23v37" fill="none" stroke-width="3.4" style="stroke: var(--logo-stick)"/>
+          <!-- arm to the stick -->
+          <path d="M30.5 26.5l9 4.5 7-2" fill="none" stroke-width="7"/>
+          <path d="M30.5 26.5l9 4.5 7-2" fill="none" stroke-width="4" style="stroke: var(--logo-shirt)"/>
+          <circle cx="47" cy="29" r="2.6" stroke-width="2.2" style="fill: var(--logo-skin)"/>
+          <!-- head + cap -->
+          <circle cx="27.5" cy="12.5" r="6.6" stroke-width="2.4" style="fill: var(--logo-skin)"/>
+          <path d="M21 10.2a6.5 6.5 0 0 1 13 0z" stroke-width="2.4" style="fill: var(--logo-shirt)"/>
+          <path d="M33 8.6h6.4a1.6 1.6 0 0 1 0 3.2H33z" stroke-width="2.2" style="fill: var(--logo-shirt)"/>
+        </g>
+      </svg>
+      <span class="brand-text">
+        <span class="brand-name">Səyyah</span>
+        <span class="brand-tag">Azərbaycanı kəşf et</span>
+      </span>
+    </a>
+    <nav class="segmented" aria-label="Oyun rejimi">
+      <span class="seg-thumb" aria-hidden="true"></span>
+      <button data-mode="random" class="mode">Təsadüfi</button>
+      <button data-mode="daily" class="mode">Günün oyunu</button>
+      <button data-mode="speed" class="mode">Sürət</button>
+    </nav>
+    <div class="top-actions">
+      <button id="installBtn" class="icon-btn" aria-label="Tətbiq kimi quraşdır" title="Quraşdır" hidden><svg><use href="#i-download"/></svg></button>
+      <button id="statsBtn" class="icon-btn" aria-label="Statistika və nailiyyətlər" title="Statistika"><svg><use href="#i-trophy"/></svg></button>
+      <button id="soundBtn" class="icon-btn" aria-label="Səsi söndür" aria-pressed="true"><svg><use href="#i-sound"/></svg></button>
+      <button id="themeBtn" class="icon-btn" aria-label="Temanı dəyiş"><svg><use href="#i-moon"/></svg></button>
+      <button id="helpBtn" class="icon-btn" aria-label="Qaydalar"><svg><use href="#i-help"/></svg></button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="map-card" aria-label="Xəritə">
+      <svg id="map" role="img" aria-label="Azərbaycan xəritəsi" preserveAspectRatio="xMidYMid meet"></svg>
+      <div class="map-tools" role="toolbar" aria-label="Xəritə idarəsi">
+        <button class="tool" id="zoomIn" aria-label="Yaxınlaşdır" title="Yaxınlaşdır"><svg><use href="#i-plus"/></svg></button>
+        <button class="tool" id="zoomOut" aria-label="Uzaqlaşdır" title="Uzaqlaşdır"><svg><use href="#i-minus"/></svg></button>
+        <button class="tool" id="zoomFit" aria-label="Marşruta fokuslan" title="Marşruta fokuslan"><svg><use href="#i-fit"/></svg></button>
+        <span class="tool-sep"></span>
+        <button class="tool" id="bordersBtn" aria-pressed="false" aria-label="Sərhədləri göstər" title="Sərhədlər (asan rejim)"><svg><use href="#i-grid"/></svg></button>
+      </div>
+      <ul class="map-legend" aria-label="Rəng izahı">
+        <li><i class="dot green"></i>Ən qısa yolda</li>
+        <li><i class="dot orange"></i>Yaxın</li>
+        <li><i class="dot red"></i>Uzaq</li>
+      </ul>
+    </section>
+
+    <aside class="panel">
+      <section class="card route-card">
+        <div class="card-head">
+          <div class="head-left">
+            <span class="eyebrow" id="modeLabel">Təsadüfi oyun</span>
+            <div class="level-wrap">
+              <button id="levelBtn" class="level-chip" aria-haspopup="menu" aria-expanded="false">
+                <span id="levelText">Orta</span><svg><use href="#i-chevron"/></svg>
+              </button>
+              <div id="levelMenu" class="level-menu" role="menu" hidden>
+                <button role="menuitem" data-level="easy"><b>Asan</b><small>+5 cəhd · qısa yollar · sərhədlər açıq</small></button>
+                <button role="menuitem" data-level="normal"><b>Orta</b><small>+3 cəhd · klassik oyun</small></button>
+                <button role="menuitem" data-level="hard"><b>Çətin</b><small>+1 cəhd · uzun yollar · "yaxın" yoxdur</small></button>
+              </div>
+            </div>
+          </div>
+          <span class="badge" id="shortBadge"></span>
+        </div>
+        <div class="route">
+          <div class="stop">
+            <span class="stop-dot start"></span>
+            <div><small>Haradan</small><strong id="startName"></strong></div>
+          </div>
+          <div class="route-line" aria-hidden="true"></div>
+          <div class="stop">
+            <span class="stop-dot end"></span>
+            <div><small>Haraya</small><strong id="endName"></strong></div>
+          </div>
+        </div>
+        <div class="tries">
+          <div class="tries-head"><span>Cəhdlər</span><span id="triesText"></span></div>
+          <div class="pips" id="pips"></div>
+        </div>
+        <div class="timer" id="timer" hidden>
+          <div class="timer-head">
+            <span><svg><use href="#i-bolt"/></svg><b id="timerText">90</b> san</span>
+            <span>Xal <b id="speedScore">0</b></span>
+          </div>
+          <div class="timer-bar"><i id="timerFill"></i></div>
+        </div>
+      </section>
+
+      <section id="speedStart" class="card speed-start" hidden>
+        <div class="speed-icon"><svg><use href="#i-bolt"/></svg></div>
+        <div>
+          <strong>Sürət rejimi</strong>
+          <small>90 saniyədə mümkün qədər çox marşrut tamamla. Mükəmməl yol +2 xal.</small>
+          <small class="speed-best" id="speedBest"></small>
+        </div>
+        <button id="speedGo" class="btn btn-primary btn-block">Başla — 90 saniyə</button>
+      </section>
+
+
+      <form id="guessForm" class="command" autocomplete="off">
+        <svg class="command-icon"><use href="#i-search"/></svg>
+        <input id="guessInput" type="text" placeholder="Rayon və ya şəhər yaz…" aria-label="Təxmin" spellcheck="false"
+          role="combobox" aria-controls="acList" aria-expanded="false" aria-autocomplete="list">
+        <button class="command-go" type="submit" aria-label="Təxmin et"><svg><use href="#i-arrow"/></svg></button>
+        <ul id="acList" class="ac-list" role="listbox" hidden></ul>
+      </form>
+
+      <section id="doneBar" class="card done-bar" hidden>
+        <div>
+          <strong id="doneTitle"></strong>
+          <small id="doneText"></small>
+        </div>
+        <div class="done-actions">
+          <button id="reopenBtn" class="btn btn-ghost">Nəticə</button>
+          <button id="againBtn" class="btn btn-primary"><svg><use href="#i-shuffle"/></svg>Yeni oyun</button>
+        </div>
+      </section>
+
+      <section class="guesses-wrap">
+        <div class="section-head">
+          <span>Təxminlər</span>
+          <span class="muted" id="guessCount"></span>
+        </div>
+        <ol id="guessList" class="guesses"></ol>
+        <p id="emptyHint" class="empty">Hələ təxmin yoxdur. <b id="hintStart"></b> ilə <b id="hintEnd"></b> arasındakı rayonları yaz.</p>
+      </section>
+
+      <div class="panel-foot" id="panelFoot">
+        <button id="giveUpBtn" class="btn btn-ghost btn-sm"><svg><use href="#i-flag"/></svg><span>Təslim ol</span></button>
+        <button id="hintBtn" class="btn btn-ghost btn-sm hint-btn"><svg><use href="#i-bulb"/></svg><span>İpucu</span><small>−1 cəhd</small></button>
+      </div>
+
+      <section class="card stats" id="stats" hidden></section>
+    </aside>
+  </main>
+
+  <!-- intro -->
+  <div id="intro" class="modal" hidden>
+    <div class="modal-backdrop"></div>
+    <div class="modal-card intro-card" role="dialog" aria-modal="true" aria-labelledby="introTitle">
+      <div class="intro-hero" aria-hidden="true">
+        <svg viewBox="0 0 320 120">
+          <defs>
+            <linearGradient id="hero-grad" x1="30" y1="0" x2="290" y2="0" gradientUnits="userSpaceOnUse">
+              <stop offset="0" style="stop-color: var(--start)"/>
+              <stop offset="0.5" style="stop-color: var(--green)"/>
+              <stop offset="1" style="stop-color: var(--end)"/>
+            </linearGradient>
+          </defs>
+          <path class="hero-track" d="M30 86 C 80 86, 80 34, 125 34 S 185 86, 215 76 S 265 34, 290 34"/>
+          <path class="hero-path" d="M30 86 C 80 86, 80 34, 125 34 S 185 86, 215 76 S 265 34, 290 34"/>
+          <circle class="hero-node n-start" cx="30" cy="86" r="9"/>
+          <circle class="hero-node n-mid n1" cx="125" cy="34" r="7"/>
+          <circle class="hero-node n-mid n2" cx="215" cy="76" r="7"/>
+          <circle class="hero-node n-end" cx="290" cy="34" r="9"/>
+          <text x="30" y="112">Bakı</text>
+          <text x="125" y="18">Hacıqabul</text>
+          <text x="215" y="104">Şamaxı</text>
+          <text x="290" y="18">İsmayıllı</text>
+        </svg>
+      </div>
+      <h2 id="introTitle">Azərbaycanı rayon-rayon gəz</h2>
+      <p class="intro-sub">İki rayon arasında qonşu rayonlardan körpü qur. Az təxminlə çatan qalib gəlir.</p>
+      <ol class="steps">
+        <li><span>1</span><div><b>Marşrutu gör</b><small>Başlanğıc və təyinat xəritədə işarələnir.</small></div></li>
+        <li><span>2</span><div><b>Aradakı rayonları yaz</b><small>Hər təxmin rənglə qiymətləndirilir.</small></div></li>
+        <li><span>3</span><div><b>Zənciri tamamla</b><small>Sərhədləri toxunan rayonlar yolu birləşdirəndə qazanırsan.</small></div></li>
+      </ol>
+      <ul class="intro-legend">
+        <li><i class="dot green"></i>Ən qısa yolda</li>
+        <li><i class="dot orange"></i>1 addım artıq</li>
+        <li><i class="dot red"></i>Uzaq</li>
+      </ul>
+      <div class="level-pick" role="radiogroup" aria-label="Çətinlik">
+        <span class="level-pick-label">Çətinlik</span>
+        <div class="level-pick-row">
+          <button role="radio" data-level="easy">Asan</button>
+          <button role="radio" data-level="normal">Orta</button>
+          <button role="radio" data-level="hard">Çətin</button>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button id="introDaily" class="btn btn-ghost"><svg><use href="#i-calendar"/></svg>Günün oyunu</button>
+        <button id="introStart" class="btn btn-primary btn-lg">Oyuna başla<svg><use href="#i-arrow"/></svg></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- outcome -->
+  <div id="outcome" class="modal" hidden>
+    <div class="modal-backdrop" data-close></div>
+    <canvas id="confetti" aria-hidden="true"></canvas>
+    <div class="modal-card outcome-card" role="dialog" aria-modal="true" aria-labelledby="outTitle">
+      <button class="modal-x" data-close aria-label="Bağla"><svg><use href="#i-close"/></svg></button>
+      <div class="out-icon">
+        <svg viewBox="0 0 64 64" width="64" height="64">
+          <circle class="ring" cx="32" cy="32" r="28"/>
+          <path class="mark win" d="M20 33l8 8 16-17"/>
+          <path class="mark lose" d="M23 23l18 18M41 23L23 41"/>
+        </svg>
+      </div>
+      <p class="out-kicker" id="outKicker"></p>
+      <h2 id="outTitle"></h2>
+      <p class="out-sub" id="outSub"></p>
+      <div class="out-stats" id="outStats"></div>
+      <ol class="out-route" id="outRoute"></ol>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" id="outShare" title="Mətni kopyala"><svg><use href="#i-copy"/></svg><span>Kopyala</span></button>
+        <button class="btn btn-ghost" id="outImage" title="Nəticə şəkli"><svg><use href="#i-image"/></svg><span>Şəkil</span></button>
+        <button class="btn btn-primary btn-lg" id="outAgain"><svg><use href="#i-shuffle"/></svg><span id="outAgainText">Yeni oyun</span></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- stats & achievements -->
+  <div id="statsModal" class="modal" hidden>
+    <div class="modal-backdrop" data-close></div>
+    <div class="modal-card stats-card" role="dialog" aria-modal="true" aria-labelledby="statsTitle">
+      <button class="modal-x" data-close aria-label="Bağla"><svg><use href="#i-close"/></svg></button>
+      <h2 id="statsTitle">Səyahət jurnalı</h2>
+      <div class="tabs" role="tablist">
+        <button role="tab" data-tab="stats" aria-selected="true">Statistika</button>
+        <button role="tab" data-tab="collection" aria-selected="false">Kolleksiya</button>
+        <button role="tab" data-tab="badges" aria-selected="false">Nişanlar</button>
+      </div>
+      <section class="tab-panel" data-panel="stats" id="panelStats"></section>
+      <section class="tab-panel" data-panel="collection" id="panelCollection" hidden></section>
+      <section class="tab-panel" data-panel="badges" id="panelBadges" hidden></section>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <a class="credit" href="https://github.com/Emrah2121" target="_blank" rel="noopener noreferrer"
+     aria-label="Əmrah Əliyev tərəfindən yaradılıb — GitHub profili">
+    <span class="credit-avatar" aria-hidden="true">
+      <span>
+        <svg viewBox="0 0 16 16" width="18" height="18"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+      </span>
+    </span>
+    <span class="credit-text">
+      <strong>Əmrah Əliyev</strong>
+      <small>tərəfindən yaradılıb</small>
+    </span>
+  </a>
+
+  <script src="data.js"></script>
+  <script src="share.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>
