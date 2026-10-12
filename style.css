@@ -772,3 +772,10 @@ body.no-orange .map-legend li:nth-child(2) { display: none; }
   .credit { transition: opacity 0.2s, translate 0.25s var(--spring), box-shadow 0.25s; }
   body.typing .credit { opacity: 0; pointer-events: none; translate: 0 12px; }
 }
+
+/* Guesses are added above content the browser might anchor to; we keep the input still ourselves. */
+html { overflow-anchor: none; }
+/* while typing on a phone, leave slack below so the page never gets too short to hold its scroll position */
+@media (max-width: 980px) {
+  body.typing .layout { padding-bottom: 60vh; }
+}

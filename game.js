@@ -932,11 +932,24 @@
     $("guessInput").setAttribute("aria-expanded", "false");
   }
   function pick(id) {
-    $("guessInput").value = "";
+    const input = $("guessInput");
+    // A guess changes the panel's height (the new row, the empty hint going away), which makes
+    // the page jump. Keep the input exactly where the player's thumb is.
+    const before = input.getBoundingClientRect().top;
+    input.value = "";
     hideAc();
     acItems = [];
     submitGuess(id);
-    if (!game.done) $("guessInput").focus();
+    const shift = input.getBoundingClientRect().top - before;
+    if (Math.abs(shift) > 0.5) window.scrollBy({ top: shift, behavior: "instant" });
+    // scrolled to the very bottom and the page got shorter: grow a spacer so the scroll can hold
+    const rest = input.getBoundingClientRect().top - before;
+    if (rest > 0.5) {
+      const layout = document.querySelector(".layout");
+      layout.style.paddingBottom = parseFloat(getComputedStyle(layout).paddingBottom) + rest + "px";
+      window.scrollBy({ top: rest, behavior: "instant" });
+    }
+    if (!game.done) input.focus({ preventScroll: true });
   }
 
   // ---------- modes ----------
@@ -1080,7 +1093,11 @@
     else if (e.key === "ArrowUp") { e.preventDefault(); setAc((acIndex - 1 + acItems.length) % acItems.length); }
     else if (e.key === "Escape") hideAc();
   });
-  $("guessInput").addEventListener("blur", () => { hideAc(); document.body.classList.remove("typing"); });
+  $("guessInput").addEventListener("blur", () => {
+    hideAc();
+    document.body.classList.remove("typing");
+    document.querySelector(".layout").style.paddingBottom = ""; // drop the spacer pick() may have grown
+  });
   $("guessInput").addEventListener("focus", () => document.body.classList.add("typing"));
   // the keyboard opening or closing changes the visible area
   if (window.visualViewport) {
