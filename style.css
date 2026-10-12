@@ -331,7 +331,11 @@ svg use, .icon-btn svg, .btn svg, .tool svg, .command svg, .modal-x svg {
   position: absolute; z-index: 15; left: 0; right: 0; top: calc(100% + 6px); margin: 0; padding: 6px;
   list-style: none; background: var(--surface); border: 1px solid var(--line); border-radius: 16px;
   box-shadow: var(--shadow-lg); animation: drop 0.18s var(--ease);
+  overflow-y: auto; overscroll-behavior: contain;
 }
+/* opens above the input when the phone keyboard leaves no room below */
+.ac-list.up { top: auto; bottom: calc(100% + 6px); animation-name: lift; }
+@keyframes lift { from { opacity: 0; transform: translateY(4px); } }
 .ac-list li {
   display: flex; justify-content: space-between; align-items: center;
   padding: 10px 12px; border-radius: 10px; cursor: pointer; font-weight: 700;
@@ -761,4 +765,10 @@ body.no-orange .map-legend li:nth-child(2) { display: none; }
   .badge-grid { grid-template-columns: repeat(2, 1fr); }
   .stat-grid b { font-size: 1.05rem; }
   .level-menu { width: 230px; }
+}
+
+/* phones: the credit badge would sit on top of the input while the keyboard is up */
+@media (max-width: 640px) {
+  .credit { transition: opacity 0.2s, translate 0.25s var(--spring), box-shadow 0.25s; }
+  body.typing .credit { opacity: 0; pointer-events: none; translate: 0 12px; }
 }

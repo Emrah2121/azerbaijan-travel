@@ -903,6 +903,25 @@
     }));
     list.hidden = !acItems.length;
     $("guessInput").setAttribute("aria-expanded", String(!list.hidden));
+    placeAc();
+  }
+  // On phones the on-screen keyboard covers whatever is below the input, so open the list
+  // upwards when there is more visible room above, and cap its height to the room it gets.
+  function placeAc() {
+    const list = $("acList");
+    if (list.hidden) return;
+    const vv = window.visualViewport;
+    const viewTop = vv ? vv.offsetTop : 0;
+    const viewBottom = vv ? vv.offsetTop + vv.height : innerHeight;
+    const box = $("guessInput").getBoundingClientRect();
+    const topbar = document.querySelector(".topbar").getBoundingClientRect().bottom;
+    const below = viewBottom - box.bottom - 12;
+    const above = box.top - Math.max(viewTop, topbar) - 12;
+    list.style.maxHeight = "";
+    const want = list.scrollHeight;
+    const up = below < want && above > below;
+    list.classList.toggle("up", up);
+    list.style.maxHeight = Math.max(120, Math.min(want, up ? above : below)) + "px";
   }
   function setAc(k) {
     acIndex = k;
@@ -1061,7 +1080,13 @@
     else if (e.key === "ArrowUp") { e.preventDefault(); setAc((acIndex - 1 + acItems.length) % acItems.length); }
     else if (e.key === "Escape") hideAc();
   });
-  $("guessInput").addEventListener("blur", hideAc);
+  $("guessInput").addEventListener("blur", () => { hideAc(); document.body.classList.remove("typing"); });
+  $("guessInput").addEventListener("focus", () => document.body.classList.add("typing"));
+  // the keyboard opening or closing changes the visible area
+  if (window.visualViewport) {
+    visualViewport.addEventListener("resize", placeAc);
+    visualViewport.addEventListener("scroll", placeAc);
+  }
 
   document.querySelectorAll(".mode").forEach((b) => b.addEventListener("click", () => setMode(b.dataset.mode)));
   window.addEventListener("resize", () => { moveThumb(); sizeLabels(); });
